@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>危机合约 #β：猎人们的盛宴</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== 背景层 ===== -->
+<div class="noise-overlay"></div>
+<div class="grid-overlay"></div>
+
+<!-- ===== 主容器 ===== -->
+<div class="container">
+
+  <!-- ==================== 左侧区域 ==================== -->
+  <section class="left-panel">
+
+    <!-- 标题栏 + 人数控制器 -->
+    <header class="panel-header">
+      <div class="header-line header-line--top"></div>
+      <div class="header-row">
+        <h1 class="header-title">
+          <span class="bracket">[</span>
+          <span class="title-text">危机合约</span>
+          <span class="title-hash">#β</span>
+          <span class="title-colon">：</span>
+          <span class="title-sub">猎人们的盛宴</span>
+          <span class="bracket">]</span>
+        </h1>
+        <!-- 猎人数量控制器 -->
+        <div class="hunter-counter" id="hunterCounter">
+          <button class="hunter-counter__btn" id="btnHunterMinus" aria-label="减少猎人"><i class="fa-solid fa-chevron-left"></i></button>
+          <span class="hunter-counter__label">参战人数：</span>
+          <span class="hunter-counter__value" id="hunterCountDisplay">4</span>
+          <button class="hunter-counter__btn" id="btnHunterPlus" aria-label="增加猎人"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+        <!-- 重置本局按钮 -->
+        <button class="header-reset-btn" id="btnResetAll">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span>重置本局</span>
+        </button>
+      </div>
+      <div class="header-line header-line--bottom"></div>
+    </header>
+
+    <!-- 状态条 -->
+    <div class="status-bar">
+      <span class="status-bar__label"><i class="fa-solid fa-tags"></i> 可选合约</span>
+      <span class="status-bar__value" id="tagPoolCount">0</span>
+      <span class="status-bar__divider">|</span>
+      <span class="status-bar__label"><i class="fa-solid fa-filter"></i> 当前筛选</span>
+      <span class="status-bar__value status-bar__value--active" id="currentFilterLabel">全部</span>
+      <span class="status-bar__divider">|</span>
+      <span class="status-bar__label"><i class="fa-solid fa-crosshairs"></i> 编辑猎人</span>
+      <span class="status-bar__value status-bar__value--active" id="activeHunterName">请先点击右侧猎人卡片</span>
+    </div>
+
+    <!-- 分类筛选栏 + 自定义 Tag 按钮 -->
+    <div class="filter-bar" id="filterBar"></div>
+
+    <!-- Tag 池网格 -->
+    <div class="tag-grid" id="tagGrid"></div>
+  </section>
+
+  <!-- ==================== 右侧区域 ==================== -->
+  <aside class="right-panel">
+
+    <!-- 猎人卡片 ×N -->
+    <div class="hunter-cards" id="hunterCards"></div>
+
+    <!-- 确认作战 -->
+    <div class="confirm-section">
+      <button class="btn-confirm" id="btnConfirm">
+        <span class="btn-confirm__text">确认作战</span>
+        <span class="btn-confirm__icon"><i class="fa-solid fa-chevron-right"></i></span>
+      </button>
+      <p class="confirm-note" id="confirmNote">请先为每位猎人配置合约并输入总伤</p>
+    </div>
+
+  </aside>
+
+</div>
+
+<!-- ===== 角落装饰 ===== -->
+<div class="corner-decor corner-decor--tl"><span>SYS_VER 3.7.1</span></div>
+<div class="corner-decor corner-decor--tr"><span>RHODES ISLAND</span></div>
+
+<!-- ===== 结算覆盖层 ===== -->
+<div class="overlay" id="resultsOverlay">
+  <div class="overlay__panel" id="resultsContent"></div>
+</div>
+
+<!-- ===== 通用确认弹窗（删除 / 重置 复用） ===== -->
+<div class="overlay" id="confirmModal">
+  <div class="modal modal--confirm">
+    <h2 class="modal__title" id="confirmTitle"><i class="fa-solid fa-triangle-exclamation"></i> 确认操作</h2>
+    <div class="modal__divider"></div>
+    <p class="modal__message" id="confirmMessage"></p>
+    <div class="modal__divider"></div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" id="btnConfirmNo">取消</button>
+      <button class="modal__btn modal__btn--danger" id="btnConfirmYes">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 自定义 Tag 弹窗 ===== -->
+<div class="overlay" id="customTagModal">
+  <div class="modal">
+    <h2 class="modal__title" id="tagModalTitle"><i class="fa-solid fa-plus-circle"></i> 自定义 Tag</h2>
+    <div class="modal__divider"></div>
+
+    <div class="modal__field">
+      <label class="modal__label">Tag 名称</label>
+      <input class="modal__input" type="text" id="customTagName" placeholder="输入 Tag 名称" maxlength="30">
+    </div>
+
+    <div class="modal__field">
+      <label class="modal__label">类型</label>
+      <select class="modal__input modal__select" id="customTagType">
+        <option value="item">道具与药品限制</option>
+        <option value="deco">珠子技能限制</option>
+        <option value="equip">装备限制</option>
+        <option value="weapon">武器类型限制</option>
+        <option value="other">其他限制</option>
+        <option value="egg">彩蛋花活限制</option>
+      </select>
+    </div>
+
+    <div class="modal__field">
+      <label class="modal__label">加分 / 扣分（正数加分，负数扣分）</label>
+      <input class="modal__input" type="number" id="customTagPoints" placeholder="例如：5000 或 -3000">
+    </div>
+
+    <div class="modal__field">
+      <label class="modal__label">描述（可选）</label>
+      <textarea class="modal__input modal__textarea" id="customTagDesc" placeholder="输入 Tag 描述..." rows="3" maxlength="200"></textarea>
+    </div>
+
+    <div class="modal__divider"></div>
+
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" id="btnCancelTag">取消</button>
+      <button class="modal__btn modal__btn--confirm" id="btnAddTag">确认添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     JavaScript
+     ================================================================ -->
+<script>
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║                【配  置  区】  CONFIG ZONE                        ║
+// ║  修改下面的数据即可改变页面内容，无需懂代码！                      ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+const CONFIG = {
+
+  // ---------- 最大猎人数量 ----------
+  maxHunters: 4,
+
+  // ---------- Tag 分类映射 ----------
+  // 用于筛选按钮的显示文字和颜色
+  tagCategories: {
+    all:    { label: "全部", icon: "fa-globe" },
+    item:   { label: "道具", icon: "fa-flask" },
+    equip:  { label: "装备", icon: "fa-shield" },
+    weapon: { label: "武器", icon: "fa-gun" },
+    deco:   { label: "技能", icon: "fa-gem" },
+    other:  { label: "其他", icon: "fa-ellipsis" },
+    egg:    { label: "彩蛋", icon: "fa-egg" }
+  },
+
+  // ---------- 公共 Tag 池 ----------
+  // type : "item" | "deco" | "equip" | "weapon" | "other" | "egg"
+  // points : 选中后直接加到此猎人的分数上（正数加分，负数扣分）
+  // perDeathPenalty : 可选，每次死亡额外扣分值（死亡次数 × 此值），无死亡不触发
+  availableTags: [
+    // ========== 道具类 (item) ==========
+    {
+      id: 1,
+      icon: "fa-flask",
+      name: "禁·秘药",
+      type: "item",
+      points: 3000,
+      description: "禁止使用远古秘药。血条上限不够？那就练到不被打中。"
+    },
+    {
+      id: 2,
+      icon: "fa-flask",
+      name: "大绿茶限购令",
+      type: "item",
+      points: 2000,
+      description: "禁止使用大回复药。仅靠队友的粉尘和狩猎笛回血。"
+    },
+    {
+      id: 3,
+      icon: "fa-flask",
+      name: "小绿茶限购令",
+      type: "item",
+      points: 1500,
+      description: "禁止使用回复药。小绿茶也不行，认真对待每一次受击。"
+    },
+    {
+      id: 4,
+      icon: "fa-flask",
+      name: "汉方断供，肉脯变质，打消枯萎",
+      type: "item",
+      points: 1500,
+      description: "对可附加特殊状态怪物禁止使用汉方药、星辰肉脯、打消果实。中了异常？自己想办法。"
+    },
+    {
+      id: 5,
+      icon: "fa-flask",
+      name: "禁·鬼人药大",
+      type: "item",
+      points: 2000,
+      description: "禁止使用鬼人药大。面板不够技术来凑。"
+    },
+    {
+      id: 6,
+      icon: "fa-flask",
+      name: "禁·鬼人药",
+      type: "item",
+      points: 1500,
+      description: "禁止使用鬼人药。连普通的也不行，裸面板出战。"
+    },
+    {
+      id: 7,
+      icon: "fa-flask",
+      name: "禁·怪力药丸",
+      type: "item",
+      points: 2500,
+      description: "禁止使用怪力药丸。爆发期的爆发力靠自己。"
+    },
+    {
+      id: 8,
+      icon: "fa-flask",
+      name: "禁·怪力种子",
+      type: "item",
+      points: 1500,
+      description: "禁止使用怪力种子。持续时间再长也不让嗑。"
+    },
+    {
+      id: 9,
+      icon: "fa-flask",
+      name: "磨刀鱼保护条例",
+      type: "item",
+      points: 2000,
+      description: "禁止使用磨刀鱼。老老实实找窗口磨刀，别想一键满斩。"
+    },
+
+    // ========== 装备类 (equip) ==========
+    {
+      id: 10,
+      icon: "fa-shield",
+      name: "黑龙/寒气 封印",
+      type: "equip",
+      points: 8000,
+      description: "禁止装备黑龙套或寒气炼成套，告别版本答案。"
+    },
+    {
+      id: 11,
+      icon: "fa-shield",
+      name: "三龙封印",
+      type: "equip",
+      points: 12000,
+      description: "禁止黑龙套、寒气套、煌黑龙套。"
+    },
+    {
+      id: 12,
+      icon: "fa-shield",
+      name: "特殊衣装禁用",
+      type: "equip",
+      points: 5000,
+      description: "禁止使用转身衣装、不动衣装、回避衣装等全部特殊衣装。"
+    },
+
+    // ========== 武器类 (weapon) ==========
+    {
+      id: 13,
+      icon: "fa-gun",
+      name: "自缚手脚",
+      type: "weapon",
+      points: 6000,
+      description: "禁止使用本人的惯用武器类型。拿起那把落灰的副武器吧。"
+    },
+
+    // ========== 技能类 (deco) ==========
+    {
+      id: 14,
+      icon: "fa-gem",
+      name: "禁·体力增强Lv3",
+      type: "deco",
+      points: 4000,
+      description: "脆皮大学生。"
+    },
+    {
+      id: 15,
+      icon: "fa-gem",
+      name: "禁·昏厥耐性Lv3",
+      type: "deco",
+      points: 3000,
+      description: "人被打、就会晕。"
+    },
+    {
+      id: 16,
+      icon: "fa-gem",
+      name: "禁·回避性能",
+      type: "deco",
+      points: 3500,
+      description: "禁止装备回避性能（包括回避距离UP）。翻滚无敌帧回归原始帧数。"
+    },
+    {
+      id: 17,
+      icon: "fa-gem",
+      name: "禁·对策耐性",
+      type: "deco",
+      points: 3000,
+      description: "禁止装备针对怪物属性的耐性技能。注意：若怪物无对应异常属性则不可选择此Tag。"
+    },
+
+    // ========== 其他类 (other) ==========
+    {
+      id: 18,
+      icon: "fa-ellipsis",
+      name: "猫车重罚",
+      type: "other",
+      points: 3000,
+      perDeathPenalty: 8000,
+      description: "零猫车奖励+3000分。每次猫车额外扣除8000分（与基础罚金2000叠加，合计每次-10000）。活着回来就是胜利。"
+    },
+
+    // ========== 彩蛋类 (egg) ==========
+    {
+      id: 19,
+      icon: "fa-egg",
+      name: "叮叮铛铛",
+      type: "egg",
+      points: 5000,
+      description: "每次使用登龙前，必须先成功打出一次居合（不限制间隔时间，无需马上居登连招）。太刀侠的仪式感。"
+    },
+    {
+      id: 20,
+      icon: "fa-egg",
+      name: "无翼之虫",
+      type: "egg",
+      points: 4000,
+      description: "虫棍禁止起飞。灯可以点、虫可以放，但你的双脚必须留在地面上。"
+    },
+    {
+      id: 21,
+      icon: "fa-egg",
+      name: "走神大剑侠",
+      type: "egg",
+      points: 3000,
+      description: "禁止带集中。 看，飞碟。"
+    }
+  ],
+
+  // ---------- 猎人初始数据 ----------
+  // selectedTagIds : 该猎人当前勾选的 Tag ID 数组
+  // deathCount    : 死亡次数 (0 ~ 3)
+  hunters: [
+    { id: 1, name: "Hunter_01", icon: "fa-user-astronaut", dps: 0, deathCount: 0, selectedTagIds: [] },
+    { id: 2, name: "Hunter_02", icon: "fa-user-ninja",     dps: 0, deathCount: 0, selectedTagIds: [] },
+    { id: 3, name: "Hunter_03", icon: "fa-user-gear",      dps: 0, deathCount: 0, selectedTagIds: [] },
+    { id: 4, name: "Hunter_04", icon: "fa-user-secret",    dps: 0, deathCount: 0, selectedTagIds: [] }
+  ],
+
+  // ---------- 通用计分规则 ----------
+  rules: {
+    deathPenalty: 2000
+    // 公式：个人总分 = 总伤 + Σ(已选Tag.points) - (deathCount × deathPenalty)
+  }
+};
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║                【逻  辑  区】  LOGIC ZONE                         ║
+// ║  下方为运行逻辑，通常情况下无需修改。                              ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+(function () {
+  "use strict";
+
+  // ---- 全局状态 ----
+  var activeHunterId   = null;           // 当前选中的猎人 ID
+  var currentFilter    = "all";          // 当前 Tag 类型筛选
+  var activeHunterCount = CONFIG.maxHunters; // 当前参战人数
+  var nextCustomTagId  = 1000;           // 自定义 Tag 自增 ID
+  var editingTagId     = null;           // 正在编辑的 Tag ID（null = 新建）
+  var pendingDeleteId  = null;           // 等待确认删除的 Tag ID
+  var confirmCallback  = null;           // 确认弹窗的回调函数
+
+  // ---- DOM 引用 ----
+  var dom = {
+    tagGrid:            document.getElementById("tagGrid"),
+    hunterCards:        document.getElementById("hunterCards"),
+    tagPoolCount:       document.getElementById("tagPoolCount"),
+    activeHunterName:   document.getElementById("activeHunterName"),
+    currentFilterLabel: document.getElementById("currentFilterLabel"),
+    filterBar:          document.getElementById("filterBar"),
+    btnConfirm:         document.getElementById("btnConfirm"),
+    confirmNote:        document.getElementById("confirmNote"),
+    resultsOverlay:     document.getElementById("resultsOverlay"),
+    resultsContent:     document.getElementById("resultsContent"),
+    // 自定义 Tag 弹窗
+    customTagModal:     document.getElementById("customTagModal"),
+    customTagName:      document.getElementById("customTagName"),
+    customTagType:      document.getElementById("customTagType"),
+    customTagPoints:    document.getElementById("customTagPoints"),
+    customTagDesc:      document.getElementById("customTagDesc"),
+    btnAddTag:          document.getElementById("btnAddTag"),
+    btnCancelTag:       document.getElementById("btnCancelTag"),
+    tagModalTitle:      document.getElementById("tagModalTitle"),
+    // 删除确认弹窗
+    confirmModal:       document.getElementById("confirmModal"),
+    confirmMessage:     document.getElementById("confirmMessage"),
+    btnConfirmYes:      document.getElementById("btnConfirmYes"),
+    btnConfirmNo:       document.getElementById("btnConfirmNo"),
+    confirmTitle:       document.getElementById("confirmTitle"),
+    btnResetAll:        document.getElementById("btnResetAll"),
+    // 人数控制器
+    hunterCountDisplay: document.getElementById("hunterCountDisplay"),
+    btnHunterMinus:     document.getElementById("btnHunterMinus"),
+    btnHunterPlus:      document.getElementById("btnHunterPlus")
+  };
+
+  // ================================================================
+  //  辅助函数
+  // ================================================================
+
+  function findTagById(id) {
+    return CONFIG.availableTags.find(function (t) { return t.id === id; });
+  }
+
+  function findHunterById(id) {
+    return CONFIG.hunters.find(function (h) { return h.id === id; });
+  }
+
+  /** 计算猎人所有 Tag 的固定分数合计（不含 perDeathPenalty） */
+  function calcHunterTagPoints(h) {
+    return h.selectedTagIds.reduce(function (sum, tid) {
+      var t = findTagById(tid);
+      return sum + (t ? t.points : 0);
+    }, 0);
+  }
+
+  /** 计算猎人已选 Tag 中 perDeathPenalty 的总和 */
+  function calcPerDeathPenalty(h) {
+    return h.selectedTagIds.reduce(function (sum, tid) {
+      var t = findTagById(tid);
+      return sum + (t && t.perDeathPenalty ? t.perDeathPenalty : 0);
+    }, 0);
+  }
+
+  /** 计算单个猎人的总分 */
+  function calcHunterScore(h) {
+    var tagPoints = calcHunterTagPoints(h);
+    var extraDeathPenalty = calcPerDeathPenalty(h);
+    var totalDeathPenalty = CONFIG.rules.deathPenalty + extraDeathPenalty;
+    return Number(h.dps) + tagPoints - (Number(h.deathCount) * totalDeathPenalty);
+  }
+
+  // ---- 本地存储自动保存 ----
+  var STORAGE_KEY = "mhwi_cc_save";
+
+  function saveToLocalStorage() {
+    try {
+      var data = {
+        activeHunterCount: activeHunterCount,
+        hunters: CONFIG.hunters.map(function (h) {
+          return {
+            id: h.id,
+            name: h.name,
+            icon: h.icon,
+            dps: h.dps,
+            deathCount: h.deathCount,
+            selectedTagIds: h.selectedTagIds.slice()
+          };
+        })
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) { /* 静默失败 */ }
+  }
+
+  function loadFromLocalStorage() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      var data = JSON.parse(raw);
+      if (!data || !data.hunters || !Array.isArray(data.hunters)) return false;
+
+      for (var i = 0; i < data.hunters.length && i < CONFIG.hunters.length; i++) {
+        var s = data.hunters[i];
+        var h = CONFIG.hunters[i];
+        if (s.name !== undefined) h.name = s.name;
+        if (s.dps !== undefined) h.dps = s.dps;
+        if (s.deathCount !== undefined) h.deathCount = s.deathCount;
+        if (s.selectedTagIds !== undefined) h.selectedTagIds = s.selectedTagIds.slice();
+      }
+
+      if (data.activeHunterCount !== undefined) {
+        activeHunterCount = Math.max(1, Math.min(CONFIG.maxHunters, data.activeHunterCount));
+      }
+
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /** 获取当前筛选下的 Tag 列表 */
+  function getFilteredTags() {
+    if (currentFilter === "all") return CONFIG.availableTags.slice();
+    return CONFIG.availableTags.filter(function (t) { return t.type === currentFilter; });
+  }
+
+  // ================================================================
+  //  渲染 — 筛选按钮栏
+  // ================================================================
+
+  function renderFilterBar() {
+    var html = "";
+    var keys = Object.keys(CONFIG.tagCategories);
+
+    keys.forEach(function (key) {
+      var cat = CONFIG.tagCategories[key];
+      var isActive = currentFilter === key;
+      var activeClass = isActive ? " filter-btn--active" : "";
+      html +=
+        '<button class="filter-btn' + activeClass + '" data-filter="' + key + '">' +
+          '<i class="fa-solid ' + cat.icon + '"></i>' +
+          '<span>' + cat.label + '</span>' +
+        '</button>';
+    });
+
+    // 末尾追加自定义 Tag 按钮
+    html +=
+      '<button class="filter-btn filter-btn--add" id="btnOpenCustomTag">' +
+        '<i class="fa-solid fa-plus"></i>' +
+        '<span>自定义 Tag</span>' +
+      '</button>';
+
+    dom.filterBar.innerHTML = html;
+
+    // 绑定自定义 Tag 按钮事件 — 创建模式
+    document.getElementById("btnOpenCustomTag").addEventListener("click", function () {
+      openTagModal("create", null);
+    });
+  }
+
+  // ================================================================
+  //  渲染 — Tag 池
+  // ================================================================
+
+  function renderTagPool() {
+    var activeHunter = findHunterById(activeHunterId);
+    var selectedSet = activeHunter ? activeHunter.selectedTagIds.slice() : [];
+    var filteredTags = getFilteredTags();
+
+    var html = "";
+    filteredTags.forEach(function (tag) {
+      var isSelected = selectedSet.indexOf(tag.id) !== -1;
+      var selClass = isSelected ? " tag-pool-card--selected" : "";
+      var pointsStr = tag.points >= 0 ? "+" + tag.points.toLocaleString() : tag.points.toLocaleString();
+      var pointsClass = tag.points >= 0 ? "tag-pool-card__points--plus" : "tag-pool-card__points--minus";
+      var typeLabel = CONFIG.tagCategories[tag.type] ? CONFIG.tagCategories[tag.type].label : tag.type;
+
+      html +=
+        '<div class="tag-pool-card' + selClass + '" data-tag-id="' + tag.id + '">' +
+          '<div class="tag-pool-card__check"><i class="fa-solid fa-check"></i></div>' +
+          '<div class="tag-pool-card__header">' +
+            '<div class="tag-pool-card__icon"><i class="fa-solid ' + (CONFIG.tagCategories[tag.type] ? CONFIG.tagCategories[tag.type].icon : "fa-tag") + '"></i></div>' +
+            '<span class="tag-pool-card__type tag-pool-card__type--' + tag.type + '">' + typeLabel + '</span>' +
+            '<span class="tag-pool-card__points ' + pointsClass + '">' + pointsStr + '</span>' +
+          '</div>' +
+          '<h3 class="tag-pool-card__name">' + tag.name + '</h3>' +
+          '<p class="tag-pool-card__desc">' + tag.description + '</p>' +
+          '<div class="tag-card__corner tag-card__corner--tl"></div>' +
+          '<div class="tag-card__corner tag-card__corner--tr"></div>' +
+          '<div class="tag-card__corner tag-card__corner--bl"></div>' +
+          '<div class="tag-card__corner tag-card__corner--br"></div>' +
+          // 操作按钮（Hover 显示）
+          '<div class="tag-pool-card__actions">' +
+            '<button class="tag-card-action tag-card-action--edit" data-action="edit" data-tag-id="' + tag.id + '" title="编辑"><i class="fa-solid fa-pen-to-square"></i></button>' +
+            '<button class="tag-card-action tag-card-action--delete" data-action="delete" data-tag-id="' + tag.id + '" title="删除"><i class="fa-solid fa-trash"></i></button>' +
+          '</div>' +
+        '</div>';
+    });
+
+    if (filteredTags.length === 0) {
+      html = '<div class="tag-grid__empty">该分类下暂无合约，请切换筛选或<a href="javascript:void(0)" id="linkAddFromEmpty">自定义 Tag</a></div>';
+    }
+
+    dom.tagGrid.innerHTML = html;
+    dom.tagPoolCount.textContent = filteredTags.length + " / " + CONFIG.availableTags.length;
+
+    // 空状态下的"自定义 Tag"链接
+    var linkAdd = document.getElementById("linkAddFromEmpty");
+    if (linkAdd) {
+      linkAdd.addEventListener("click", function (e) { e.preventDefault(); openTagModal("create", null); });
+    }
+  }
+
+  // ================================================================
+  //  渲染 — 猎人卡片
+  // ================================================================
+
+  /** 只渲染前 activeHunterCount 个猎人 */
+  function renderHunterCards() {
+    var html = "";
+    for (var i = 0; i < activeHunterCount; i++) {
+      var h = CONFIG.hunters[i];
+      if (!h) break;
+
+      var isActive = h.id === activeHunterId;
+      var activeClass = isActive ? " hunter-card--active" : "";
+      var score = calcHunterScore(h);
+
+      // 已选 Tag 小标签
+      var tagPillsHtml = "";
+      if (h.selectedTagIds.length === 0) {
+        tagPillsHtml = '<span class="hunter-card__no-tags">未选择合约</span>';
+      } else {
+        h.selectedTagIds.forEach(function (tid) {
+          var t = findTagById(tid);
+          if (!t) return;
+          var ptsStr = t.points >= 0 ? "+" + t.points : t.points.toString();
+          tagPillsHtml +=
+            '<span class="tag-pill tag-pill--' + t.type + '" data-tag-id="' + t.id + '">' +
+              t.name + ' <span class="tag-pill__pts">(' + ptsStr + ')</span>' +
+              '<i class="fa-solid fa-xmark tag-pill__remove"></i>' +
+            '</span>';
+        });
+      }
+
+      var scoreClass = score >= 0 ? "hunter-card__score--plus" : "hunter-card__score--minus";
+
+      html +=
+        '<div class="hunter-card' + activeClass + '" data-hunter-id="' + h.id + '">' +
+          '<div class="hunter-card__active-bar"></div>' +
+          // 单猎人清空按钮
+          '<button class="hunter-card__clear" data-action="clear" data-hunter-id="' + h.id + '" title="清空此猎人数据"><i class="fa-solid fa-xmark"></i></button>' +
+          '<div class="hunter-card__header">' +
+            '<span class="hunter-card__index">' + String(h.id).padStart(2, "0") + '</span>' +
+            '<div class="hunter-card__avatar"><i class="fa-solid ' + h.icon + '"></i></div>' +
+            '<input class="hunter-card__input hunter-card__input--name" type="text" value="' + h.name + '" data-field="name" data-hunter-id="' + h.id + '" placeholder="猎人名称">' +
+          '</div>' +
+          '<div class="hunter-card__stats">' +
+            '<div class="hunter-card__stat">' +
+              '<label class="hunter-card__label"><i class="fa-solid fa-crosshairs"></i> 总伤</label>' +
+              '<input class="hunter-card__input hunter-card__input--dps" type="number" value="' + h.dps + '" data-field="dps" data-hunter-id="' + h.id + '" placeholder="0" min="0">' +
+            '</div>' +
+            '<div class="hunter-card__stat">' +
+              '<label class="hunter-card__label"><i class="fa-solid fa-skull"></i> 死亡</label>' +
+              '<div class="death-input-group">' +
+                '<button class="death-btn" data-action="deathDec" data-hunter-id="' + h.id + '" aria-label="减少死亡次数">-</button>' +
+                '<input class="hunter-card__input hunter-card__input--death" type="number" value="' + h.deathCount + '" data-field="deathCount" data-hunter-id="' + h.id + '" min="0" max="3">' +
+                '<button class="death-btn" data-action="deathInc" data-hunter-id="' + h.id + '" aria-label="增加死亡次数">+</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="hunter-card__tags">' + tagPillsHtml + '</div>' +
+          '<div class="hunter-card__score-row">' +
+            '<span class="hunter-card__score-label">个人总分</span>' +
+            '<span class="hunter-card__score ' + scoreClass + '">' + (score >= 0 ? "+" : "") + score.toLocaleString() + '</span>' +
+          '</div>' +
+        '</div>';
+    }
+    dom.hunterCards.innerHTML = html;
+  }
+
+  /** 全量刷新 UI */
+  function refreshUI() {
+    renderFilterBar();
+    renderTagPool();
+    renderHunterCards();
+
+    // 更新状态条
+    dom.currentFilterLabel.textContent = CONFIG.tagCategories[currentFilter].label;
+    if (activeHunterId) {
+      var ah = findHunterById(activeHunterId);
+      dom.activeHunterName.textContent = ah ? ah.name : "--";
+    } else {
+      dom.activeHunterName.textContent = "请先点击右侧猎人卡片";
+    }
+  }
+
+  // ================================================================
+  //  事件 — Tag 筛选
+  // ================================================================
+
+  function onFilterClick(e) {
+    var btn = e.target.closest(".filter-btn");
+    if (!btn) return;
+    var filterKey = btn.getAttribute("data-filter");
+    if (!filterKey) return; // 自定义 Tag 按钮没有 data-filter
+
+    currentFilter = filterKey;
+    refreshUI();
+  }
+
+  // ================================================================
+  //  事件 — Tag 池点击
+  // ================================================================
+
+  function onTagPoolClick(e) {
+    // 忽略操作按钮（编辑/删除）的点击
+    if (e.target.closest(".tag-card-action")) return;
+    var card = e.target.closest(".tag-pool-card");
+    if (!card) return;
+    if (!activeHunterId) return;
+
+    var tagId = parseInt(card.getAttribute("data-tag-id"), 10);
+    var hunter = findHunterById(activeHunterId);
+    if (!hunter) return;
+
+    var idx = hunter.selectedTagIds.indexOf(tagId);
+    if (idx !== -1) {
+      hunter.selectedTagIds.splice(idx, 1);
+    } else {
+      hunter.selectedTagIds.push(tagId);
+    }
+
+    // 局部刷新 Tag 池和当前猎人卡片即可
+    renderTagPool();
+    renderHunterCards();
+    saveToLocalStorage();
+  }
+
+  // ================================================================
+  //  事件 — 猎人卡片交互
+  // ================================================================
+
+  function onHunterCardClick(e) {
+    if (e.target.tagName === "INPUT") return;
+    if (e.target.closest(".tag-pill")) return;
+
+    var card = e.target.closest(".hunter-card");
+    if (!card) return;
+
+    var hunterId = parseInt(card.getAttribute("data-hunter-id"), 10);
+    activeHunterId = (activeHunterId === hunterId) ? null : hunterId;
+    refreshUI();
+  }
+
+  function onTagPillClick(e) {
+    var pill = e.target.closest(".tag-pill");
+    if (!pill) return;
+
+    var tagId = parseInt(pill.getAttribute("data-tag-id"), 10);
+    var card = pill.closest(".hunter-card");
+    var hunterId = parseInt(card.getAttribute("data-hunter-id"), 10);
+    var hunter = findHunterById(hunterId);
+    if (!hunter) return;
+
+    var idx = hunter.selectedTagIds.indexOf(tagId);
+    if (idx !== -1) hunter.selectedTagIds.splice(idx, 1);
+    refreshUI();
+    saveToLocalStorage();
+  }
+
+  function onHunterInput(e) {
+    var input = e.target;
+    var hunterId = parseInt(input.getAttribute("data-hunter-id"), 10);
+    var field = input.getAttribute("data-field");
+    var hunter = findHunterById(hunterId);
+    if (!hunter) return;
+
+    if (field === "name") {
+      hunter.name = input.value;
+    } else if (field === "dps") {
+      hunter.dps = parseInt(input.value, 10) || 0;
+    } else if (field === "deathCount") {
+      var v = parseInt(input.value, 10) || 0;
+      hunter.deathCount = Math.max(0, Math.min(3, v));
+      input.value = hunter.deathCount;
+    }
+
+    updateScoreDisplay(hunterId);
+    if (hunterId === activeHunterId && field === "name") {
+      dom.activeHunterName.textContent = hunter.name;
+    }
+    saveToLocalStorage();
+  }
+
+  function updateScoreDisplay(hunterId) {
+    var hunter = findHunterById(hunterId);
+    if (!hunter) return;
+
+    var card = document.querySelector('.hunter-card[data-hunter-id="' + hunterId + '"]');
+    if (!card) return;
+
+    var scoreEl = card.querySelector(".hunter-card__score");
+    if (!scoreEl) return;
+
+    var score = calcHunterScore(hunter);
+    scoreEl.textContent = (score >= 0 ? "+" : "") + score.toLocaleString();
+    scoreEl.className = "hunter-card__score " + (score >= 0 ? "hunter-card__score--plus" : "hunter-card__score--minus");
+  }
+
+  // 死亡次数 +/- 按钮
+  function onDeathBtnClick(btn) {
+    var action = btn.getAttribute("data-action");
+    var hunterId = parseInt(btn.getAttribute("data-hunter-id"), 10);
+    var hunter = findHunterById(hunterId);
+    if (!hunter) return;
+
+    if (action === "deathDec") {
+      hunter.deathCount = Math.max(0, hunter.deathCount - 1);
+    } else if (action === "deathInc") {
+      hunter.deathCount = Math.min(3, hunter.deathCount + 1);
+    }
+
+    var input = document.querySelector('.hunter-card__input--death[data-hunter-id="' + hunterId + '"]');
+    if (input) input.value = hunter.deathCount;
+
+    updateScoreDisplay(hunterId);
+    saveToLocalStorage();
+  }
+
+  // ================================================================
+  //  通用 Tag 弹窗（创建 / 编辑）
+  // ================================================================
+
+  /**
+   * 打开 Tag 表单弹窗
+   * @param {string} mode - 'create' | 'edit'
+   * @param {object|null} tagData - 编辑时传入现有 Tag 对象，创建时传 null
+   */
+  function openTagModal(mode, tagData) {
+    editingTagId = tagData ? tagData.id : null;
+
+    // 动态更新标题
+    dom.tagModalTitle.innerHTML = mode === "create"
+      ? '<i class="fa-solid fa-plus-circle"></i> 自定义 Tag'
+      : '<i class="fa-solid fa-pen-to-square"></i> 编辑合约标签';
+
+    // 更新提交按钮文字
+    dom.btnAddTag.textContent = mode === "create" ? "确认添加" : "保存修改";
+
+    // 预填充或清空
+    dom.customTagName.value = tagData ? tagData.name : "";
+    dom.customTagType.value = tagData ? tagData.type : "item";
+    dom.customTagPoints.value = tagData ? tagData.points : "";
+    dom.customTagDesc.value = tagData ? (tagData.description || "") : "";
+
+    dom.customTagModal.classList.add("overlay--visible");
+    setTimeout(function () { dom.customTagName.focus(); }, 100);
+  }
+
+  function closeTagModal() {
+    dom.customTagModal.classList.remove("overlay--visible");
+    editingTagId = null;
+  }
+
+  /** 提交 Tag 表单：根据 editingTagId 决定创建或更新 */
+  function submitTagForm() {
+    var name = dom.customTagName.value.trim();
+    var type = dom.customTagType.value;
+    var points = parseInt(dom.customTagPoints.value, 10);
+    var desc = dom.customTagDesc.value.trim();
+
+    if (!name) { dom.customTagName.focus(); return; }
+    if (isNaN(points)) { dom.customTagPoints.focus(); return; }
+
+    if (editingTagId !== null) {
+      // 编辑模式：原地更新
+      var tag = findTagById(editingTagId);
+      if (tag) {
+        tag.name = name;
+        tag.type = type;
+        tag.points = points;
+        tag.description = desc || "(自定义合约)";
+      }
+      // 动画反馈：找对应卡片
+      flashCard(editingTagId, "success");
+    } else {
+      // 创建模式：插入数组最前面
+      CONFIG.availableTags.unshift({
+        id: nextCustomTagId++,
+        icon: (CONFIG.tagCategories[type] ? CONFIG.tagCategories[type].icon : "fa-tag"),
+        name: name,
+        type: type,
+        points: points,
+        description: desc || "(自定义合约)"
+      });
+    }
+
+    closeTagModal();
+    refreshUI();
+  }
+
+  // ================================================================
+  //  通用确认弹窗
+  // ================================================================
+
+  /**
+   * 显示确认弹窗
+   * @param {string} title   - 弹窗标题 HTML
+   * @param {string} message - 提示文字
+   * @param {string} yesText - 确认按钮文字
+   * @param {boolean} isDanger - 是否红色危险按钮
+   * @param {function} callback - 确认后执行的回调
+   */
+  function showConfirmDialog(title, message, yesText, isDanger, callback) {
+    dom.confirmTitle.innerHTML = title;
+    dom.confirmMessage.textContent = message;
+    dom.btnConfirmYes.textContent = yesText;
+    dom.btnConfirmYes.className = "modal__btn " + (isDanger ? "modal__btn--danger" : "modal__btn--confirm");
+    confirmCallback = callback;
+    dom.confirmModal.classList.add("overlay--visible");
+  }
+
+  function closeConfirmModal() {
+    dom.confirmModal.classList.remove("overlay--visible");
+    pendingDeleteId = null;
+    confirmCallback = null;
+  }
+
+  function onConfirmYes() {
+    if (confirmCallback) confirmCallback();
+  }
+
+  // ================================================================
+  //  删除 Tag
+  // ================================================================
+
+  function showDeleteConfirm(tagId) {
+    var tag = findTagById(tagId);
+    if (!tag) return;
+    pendingDeleteId = tagId;
+    showConfirmDialog(
+      '<i class="fa-solid fa-triangle-exclamation"></i> 确认删除',
+      "确认删除合约标签 \"" + tag.name + "\" 吗？此操作无法撤销。",
+      "确认删除", true,
+      executeDelete
+    );
+  }
+
+  function executeDelete() {
+    if (pendingDeleteId === null) return;
+    var tagId = pendingDeleteId;
+    flashCard(tagId, "delete");
+    setTimeout(function () {
+      var idx = -1;
+      for (var i = 0; i < CONFIG.availableTags.length; i++) {
+        if (CONFIG.availableTags[i].id === tagId) { idx = i; break; }
+      }
+      if (idx !== -1) CONFIG.availableTags.splice(idx, 1);
+      CONFIG.hunters.forEach(function (h) {
+        var tidx = h.selectedTagIds.indexOf(tagId);
+        if (tidx !== -1) h.selectedTagIds.splice(tidx, 1);
+      });
+      pendingDeleteId = null;
+      closeConfirmModal();
+      refreshUI();
+      saveToLocalStorage();
+    }, 350);
+  }
+
+  // ================================================================
+  //  重置与清空
+  // ================================================================
+
+  /** 再来一局：保留已选 Tag，只清空总伤和死亡次数 */
+  function newRound() {
+    CONFIG.hunters.forEach(function (h) {
+      h.dps = 0;
+      h.deathCount = 0;
+    });
+    activeHunterId = null;
+    dom.resultsOverlay.classList.remove("overlay--visible");
+    refreshUI();
+    saveToLocalStorage();
+  }
+
+  /** 重置所有猎人数据（含已选 Tag） */
+  function resetAllHunters() {
+    CONFIG.hunters.forEach(function (h) {
+      h.dps = 0;
+      h.deathCount = 0;
+      h.selectedTagIds = [];
+    });
+    activeHunterId = null;
+    closeConfirmModal();
+    refreshUI();
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* 静默 */ }
+  }
+
+  function showResetConfirm() {
+    showConfirmDialog(
+      '<i class="fa-solid fa-rotate-left"></i> 重置本局',
+      "确认重置本局所有数据吗？此操作无法撤销。\n将清空所有猎人的总伤、死亡次数和已选 Tag。",
+      "确认重置", true,
+      resetAllHunters
+    );
+  }
+
+  /** 清空单个猎人的数据 */
+  function clearHunter(hunterId) {
+    var hunter = findHunterById(hunterId);
+    if (!hunter) return;
+    hunter.dps = 0;
+    hunter.deathCount = 0;
+    hunter.selectedTagIds = [];
+    if (activeHunterId === hunterId) activeHunterId = null;
+    refreshUI();
+    saveToLocalStorage();
+  }
+
+  // ================================================================
+  //  视觉反馈
+  // ================================================================
+
+  /** 给指定 Tag 卡片添加短暂动画 class */
+  function flashCard(tagId, type) {
+    var card = document.querySelector('.tag-pool-card[data-tag-id="' + tagId + '"]');
+    if (!card) return;
+
+    var cls = type === "delete" ? "tag-pool-card--flash-delete" : "tag-pool-card--flash-success";
+    card.classList.add(cls);
+    card.addEventListener("animationend", function () {
+      card.classList.remove(cls);
+    }, { once: true });
+  }
+
+  // ================================================================
+  //  事件 — Tag 操作按钮（编辑 / 删除）
+  // ================================================================
+
+  function onTagActionClick(e) {
+    var btn = e.target.closest(".tag-card-action");
+    if (!btn) return;
+
+    var action = btn.getAttribute("data-action");
+    var tagId = parseInt(btn.getAttribute("data-tag-id"), 10);
+    var tag = findTagById(tagId);
+    if (!tag) return;
+
+    if (action === "edit") {
+      openTagModal("edit", tag);
+    } else if (action === "delete") {
+      showDeleteConfirm(tagId);
+    }
+  }
+
+  // ================================================================
+  //  猎人数量控制
+  // ================================================================
+
+  function updateHunterCount(newCount) {
+    newCount = Math.max(1, Math.min(CONFIG.maxHunters, newCount));
+    if (newCount === activeHunterCount) return;
+
+    // 重置所有现有猎人数据
+    CONFIG.hunters.forEach(function (h) {
+      h.dps = 0;
+      h.deathCount = 0;
+      h.selectedTagIds = [];
+    });
+
+    // 截断或扩充
+    while (CONFIG.hunters.length > newCount) {
+      CONFIG.hunters.pop();
+    }
+    while (CONFIG.hunters.length < newCount) {
+      var newId = CONFIG.hunters.length + 1;
+      CONFIG.hunters.push({
+        id: newId,
+        name: "Hunter_" + String(newId).padStart(2, "0"),
+        icon: "fa-user",
+        dps: 0,
+        deathCount: 0,
+        selectedTagIds: []
+      });
+    }
+
+    activeHunterCount = newCount;
+    activeHunterId = null;
+
+    dom.hunterCountDisplay.textContent = newCount;
+
+    // 更新 +/- 按钮状态
+    dom.btnHunterMinus.disabled = (newCount <= 1);
+    dom.btnHunterPlus.disabled = (newCount >= CONFIG.maxHunters);
+
+    refreshUI();
+    saveToLocalStorage();
+  }
+
+  // ================================================================
+  //  结算
+  // ================================================================
+
+  function onConfirm() {
+    var activeHunters = CONFIG.hunters.slice(0, activeHunterCount);
+    var sorted = activeHunters.slice().sort(function (a, b) {
+      return calcHunterScore(b) - calcHunterScore(a);
+    });
+    var mvp = sorted[0];
+
+    var html = "";
+    html += '<h2 class="overlay__title">作战结算</h2>';
+    html += '<div class="overlay__divider"></div>';
+
+    html += '<div class="overlay__table">';
+    html +=   '<div class="overlay__table-header">';
+    html +=     '<span>#</span><span>猎人代号</span><span>明细</span><span>总分</span>';
+    html +=   '</div>';
+
+    sorted.forEach(function (h, idx) {
+      var rank = idx + 1;
+      var score = calcHunterScore(h);
+      var tagPts = calcHunterTagPoints(h);
+      var extraDeathPen = calcPerDeathPenalty(h);
+      var baseDeathPen = Number(h.deathCount) * CONFIG.rules.deathPenalty;
+      var totalDeathPen = baseDeathPen + Number(h.deathCount) * extraDeathPen;
+      var isMVP = h.id === mvp.id;
+      var rowClass = isMVP ? " overlay__table-row--mvp" : "";
+
+      var details = "总伤 " + Number(h.dps).toLocaleString();
+      if (tagPts !== 0) {
+        details += "  |  Tag " + (tagPts >= 0 ? "+" : "") + tagPts.toLocaleString();
+      }
+      if (totalDeathPen > 0) {
+        details += "  |  死亡 -" + totalDeathPen.toLocaleString();
+        if (extraDeathPen > 0 && Number(h.deathCount) > 0) {
+          details += "（含猫车重罚 -" + (Number(h.deathCount) * extraDeathPen).toLocaleString() + "）";
+        }
+      }
+
+      var rankIcon = "";
+      if (rank === 1) rankIcon = ' <i class="fa-solid fa-crown"></i>';
+      else if (rank === 2) rankIcon = ' <i class="fa-solid fa-medal" style="color:#aabbcc;"></i>';
+      else if (rank === 3) rankIcon = ' <i class="fa-solid fa-medal" style="color:#aa8855;"></i>';
+
+      html += '<div class="overlay__table-row' + rowClass + '">';
+      html +=   '<span class="overlay__rank">' + String(rank).padStart(2, "0") + rankIcon + '</span>';
+      html +=   '<span class="overlay__hunter-name">' + h.name + '</span>';
+      html +=   '<span class="overlay__detail">' + details + '</span>';
+      html +=   '<span class="overlay__dps">' + (score >= 0 ? "+" : "") + score.toLocaleString() + '</span>';
+      html += '</div>';
+    });
+
+    html += '</div>';
+    html += '<div class="overlay__divider"></div>';
+    html += '<button class="overlay__btn" id="btnReset">再来一局</button>';
+
+    dom.resultsContent.innerHTML = html;
+    dom.resultsOverlay.classList.add("overlay--visible");
+
+    document.getElementById("btnReset").addEventListener("click", newRound);
+  }
+
+  // ================================================================
+  //  初始化
+  // ================================================================
+
+  function init() {
+    // 从 localStorage 恢复上次数据
+    loadFromLocalStorage();
+
+    dom.hunterCountDisplay.textContent = activeHunterCount;
+    dom.btnHunterMinus.disabled = (activeHunterCount <= 1);
+    dom.btnHunterPlus.disabled = (activeHunterCount >= CONFIG.maxHunters);
+
+    refreshUI();
+
+    // 筛选栏点击
+    dom.filterBar.addEventListener("click", onFilterClick);
+    // Tag 池点击（含操作按钮）
+    dom.tagGrid.addEventListener("click", function (e) {
+      if (e.target.closest(".tag-card-action")) return onTagActionClick(e);
+      onTagPoolClick(e);
+    });
+    // 猎人卡片交互
+    dom.hunterCards.addEventListener("click", function (e) {
+      var deathBtn = e.target.closest(".death-btn");
+      if (deathBtn) return onDeathBtnClick(deathBtn);
+      if (e.target.closest(".tag-pill")) return onTagPillClick(e);
+      if (e.target.closest(".hunter-card__clear")) {
+        var hunterId = parseInt(e.target.closest(".hunter-card__clear").getAttribute("data-hunter-id"), 10);
+        clearHunter(hunterId);
+        return;
+      }
+      onHunterCardClick(e);
+    });
+    dom.hunterCards.addEventListener("input", onHunterInput);
+    // 确认作战
+    dom.btnConfirm.addEventListener("click", onConfirm);
+    // Tag 弹窗（创建/编辑）
+    dom.btnAddTag.addEventListener("click", submitTagForm);
+    dom.btnCancelTag.addEventListener("click", closeTagModal);
+    dom.customTagModal.addEventListener("click", function (e) {
+      if (e.target === dom.customTagModal) closeTagModal();
+    });
+    dom.customTagModal.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); submitTagForm(); }
+      if (e.key === "Escape") closeTagModal();
+    });
+    // 通用确认弹窗
+    dom.btnConfirmYes.addEventListener("click", onConfirmYes);
+    dom.btnConfirmNo.addEventListener("click", closeConfirmModal);
+    dom.confirmModal.addEventListener("click", function (e) {
+      if (e.target === dom.confirmModal) closeConfirmModal();
+    });
+    dom.confirmModal.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); onConfirmYes(); }
+      if (e.key === "Escape") closeConfirmModal();
+    });
+    // 重置本局
+    dom.btnResetAll.addEventListener("click", showResetConfirm);
+    // 人数控制器
+    dom.btnHunterMinus.addEventListener("click", function () { updateHunterCount(activeHunterCount - 1); });
+    dom.btnHunterPlus.addEventListener("click",  function () { updateHunterCount(activeHunterCount + 1); });
+    // 结算覆盖层 — 点击背景关闭
+    dom.resultsOverlay.addEventListener("click", function (e) {
+      // 不关闭，只能点按钮
+    });
+  }
+
+  window.addEventListener("DOMContentLoaded", init);
+
+})();
+</script>
+
+</body>
+</html>
